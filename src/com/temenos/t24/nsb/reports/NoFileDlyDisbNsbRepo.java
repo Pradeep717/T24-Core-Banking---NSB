@@ -276,13 +276,16 @@ public class NoFileDlyDisbNsbRepo extends Enquiry {
 	private double getPositiveBalance(Contract contract, String balanceType, TDate startDate, TDate endDate) {
 		List<BalanceMovement> movements = contract.getContractBalanceMovementsForPeriod(balanceType, "", startDate,
 				endDate);
+
 		if (movements.isEmpty()) {
 			return 0.0;
 		}
 
 		String balanceStr = movements.get(0).getBalance().toString();
+
 		if (balanceStr.startsWith("-")) {
 			balanceStr = balanceStr.substring(1);
+
 		}
 
 		return Double.parseDouble(balanceStr);
@@ -333,15 +336,19 @@ public class NoFileDlyDisbNsbRepo extends Enquiry {
 					if (!amountStr.isEmpty()) {
 						double amount = Double.parseDouble(amountStr);
 						if (amount > 0) {
+							String[] details = getDisbursementDetails(activityRef.getActivityRef().toString());
+
+							// Skip if either inputter or authorizer is missing
+							if (details == null) {
+								continue;
+							}
+
 							info.disbursementCount++;
 							info.totalDisbursed += amount;
 
-							// add disbursement details if numbers, make up to 2 decimal places if no values
-							// add value as N/A for num number values
+							// add disbursement details
 							info.disbursementAmounts += DECIMAL_FORMAT.format(new BigDecimal(amount)) + ",\n";
 							info.disbursementDates += currentEffectiveDate.toString() + ",\n";
-
-							String[] details = getDisbursementDetails(activityRef.getActivityRef().toString());
 							info.disbursementInputters += details[0] + ",\n";
 							info.disbursementAuthorisers += details[1] + ",\n";
 
@@ -378,13 +385,12 @@ public class NoFileDlyDisbNsbRepo extends Enquiry {
 	}
 
 	private boolean shouldProcessArrangement(BalanceInfo balanceInfo, DisbursementInfo disbursementInfo) {
+		// Calculate toBeDisbursedAmount
+		double toBeDisbursedAmount = calculateToBeDisbursedAmount(balanceInfo);
 
-		boolean hasDisbursedLoan1 = (balanceInfo.totalCommitment - disbursementInfo.totalDisbursed) == 0
-				&& disbursementInfo.totalDisbursed > 0;
-
-		boolean hasDisbursedLoan2 = balanceInfo.totalCommitment > 0 && balanceInfo.availableBalance == 0;
-
-		return (hasDisbursedLoan1 || hasDisbursedLoan2) && disbursementInfo.disbursementCount > 0;
+		// All four conditions must be true
+		return balanceInfo.availableBalance == 0 && disbursementInfo.disbursementCount > 0
+				&& disbursementInfo.totalDisbursed <= balanceInfo.totalCommitment && toBeDisbursedAmount == 0;
 	}
 
 	private void processValidArrangement(String arrangementId, Contract contract, TDate endDate,
@@ -437,7 +443,7 @@ public class NoFileDlyDisbNsbRepo extends Enquiry {
 					disbursementInfo.disbursementCount, formattedLastDisbursedDate,
 					disbursementInfo.disbursementAmounts, disbursementInfo.disbursementDates,
 					disbursementInfo.disbursementInputters, disbursementInfo.disbursementAuthorisers,
-					companyNameWithCode);
+					companyNameWithCode, formattedGrantedAmount);
 		} catch (Exception e) {
 			LOGGER.log(Level.SEVERE, "Error processing valid arrangement " + arrangementId, e);
 		}
@@ -579,28 +585,29 @@ public class NoFileDlyDisbNsbRepo extends Enquiry {
 	}
 
 	private String[] getDisbursementDetails(String activityRef) {
-		String[] details = new String[] { "N/A", "N/A" };
+		// Initialize with null to indicate missing data
+		String[] details = null;
 
 		if (activityRef == null || activityRef.isEmpty()) {
-			return details;
+			return null;
 		}
 
 		try {
 			AaArrangementActivityRecord activityRecord = new AaArrangementActivityRecord(
 					dataAccess.getRecord("AA.ARRANGEMENT.ACTIVITY", activityRef));
 
-			if (!activityRecord.getInputter().toString().isEmpty()) {
-				String userId = activityRecord.getInputter().toString().split("_")[1];
-				details[0] = userId;
-			} else {
-				details[0] = "N/A";
+			// Check if both inputter and authorizer exist
+			String inputter = activityRecord.getInputter().toString();
+			String authoriser = activityRecord.getAuthoriser().toString();
+
+			if (!inputter.isEmpty() && !authoriser.isEmpty()) {
+				details = new String[2];
+				String inputterUserId = inputter.split("_")[1];
+				String authoriserUserId = authoriser.split("_")[1];
+				details[0] = inputterUserId;
+				details[1] = authoriserUserId;
 			}
-			if (!activityRecord.getAuthoriser().toString().isEmpty()) {
-				String userId = activityRecord.getAuthoriser().toString().split("_")[1];
-				details[1] = userId;
-			} else {
-				details[1] = "N/A";
-			}
+			// Else return null (implicit)
 
 		} catch (Exception e) {
 			LOGGER.log(Level.SEVERE, "Error getting disbursement details for " + activityRef, e);
@@ -621,14 +628,14 @@ public class NoFileDlyDisbNsbRepo extends Enquiry {
 			String product, String linkedAccount, String purpose, String currentTimestamp, String toBeDisbursed,
 			String owner, String jointOwner, int disbursementCount, String lastDisbursedDate,
 			String disbursementAmounts, String disbursementDates, String disbursementInputters,
-			String disbursementAuthorisers, String companyNameWithCode) {
+			String disbursementAuthorisers, String companyNameWithCode, String grantedAmount) {
 
 		String[] parts = { interestRates, approvedAmount, disbursedAmount, grantedDate, tenure, installment,
 				arrangementId, productGroup, product, linkedAccount, purpose, currentTimestamp, toBeDisbursed, owner,
 				jointOwner, String.valueOf(disbursementCount), lastDisbursedDate != null ? lastDisbursedDate : "",
 
 				disbursementAmounts, disbursementDates, disbursementInputters, disbursementAuthorisers,
-				companyNameWithCode };
+				companyNameWithCode, grantedAmount };
 
 		returnList.add(String.join(DELIMITER, parts));
 	}

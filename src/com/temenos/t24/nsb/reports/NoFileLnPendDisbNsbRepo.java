@@ -326,15 +326,19 @@ public class NoFileLnPendDisbNsbRepo extends Enquiry {
 					if (!amountStr.isEmpty()) {
 						double amount = Double.parseDouble(amountStr);
 						if (amount > 0) {
+							String[] details = getDisbursementDetails(activityRef.getActivityRef().toString());
+
+							// Skip if either inputter or authorizer is missing
+							if (details == null) {
+								continue;
+							}
+
 							info.disbursementCount++;
 							info.totalDisbursed += amount;
 
-							// add disbursement details if numbers, make up to 2 decimal places if no values
-							// add value as N/A for num number values
+							// add disbursement details
 							info.disbursementAmounts += DECIMAL_FORMAT.format(new BigDecimal(amount)) + ",\n";
 							info.disbursementDates += currentEffectiveDate.toString() + ",\n";
-
-							String[] details = getDisbursementDetails(activityRef.getActivityRef().toString());
 							info.disbursementInputters += details[0] + ",\n";
 							info.disbursementAuthorisers += details[1] + ",\n";
 
@@ -377,6 +381,7 @@ public class NoFileLnPendDisbNsbRepo extends Enquiry {
 		boolean hasPositiveGrantedAmount2 = (balanceInfo.totalCommitment - balanceInfo.currentCommitment) > 0
 				&& balanceInfo.currentCommitment > 0;
 
+		// Only process if there are disbursements with both inputter and authorizer
 		return (hasPositiveGrantedAmount1 || hasPositiveGrantedAmount2) && disbursementInfo.disbursementCount > 0;
 	}
 
@@ -573,28 +578,29 @@ public class NoFileLnPendDisbNsbRepo extends Enquiry {
 	}
 
 	private String[] getDisbursementDetails(String activityRef) {
-		String[] details = new String[] { "N/A", "N/A" };
+		// Initialize with null to indicate missing data
+		String[] details = null;
 
 		if (activityRef == null || activityRef.isEmpty()) {
-			return details;
+			return null;
 		}
 
 		try {
 			AaArrangementActivityRecord activityRecord = new AaArrangementActivityRecord(
 					dataAccess.getRecord("AA.ARRANGEMENT.ACTIVITY", activityRef));
 
-			if (!activityRecord.getInputter().toString().isEmpty()) {
-				String userId = activityRecord.getInputter().toString().split("_")[1];
-				details[0] = userId;
-			} else {
-				details[0] = "N/A";
+			// Check if both inputter and authorizer exist
+			String inputter = activityRecord.getInputter().toString();
+			String authoriser = activityRecord.getAuthoriser().toString();
+
+			if (!inputter.isEmpty() && !authoriser.isEmpty()) {
+				details = new String[2];
+				String inputterUserId = inputter.split("_")[1];
+				String authoriserUserId = authoriser.split("_")[1];
+				details[0] = inputterUserId;
+				details[1] = authoriserUserId;
 			}
-			if (!activityRecord.getAuthoriser().toString().isEmpty()) {
-				String userId = activityRecord.getAuthoriser().toString().split("_")[1];
-				details[1] = userId;
-			} else {
-				details[1] = "N/A";
-			}
+			// Else return null (implicit)
 
 		} catch (Exception e) {
 			LOGGER.log(Level.SEVERE, "Error getting disbursement details for " + activityRef, e);
