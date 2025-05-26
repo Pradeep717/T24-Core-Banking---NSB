@@ -389,8 +389,22 @@ public class NoFileDlyDisbNsbRepo extends Enquiry {
 		double toBeDisbursedAmount = calculateToBeDisbursedAmount(balanceInfo);
 
 		// All four conditions must be true
-		return balanceInfo.availableBalance == 0 && disbursementInfo.disbursementCount > 0
+		boolean fullyDisbursedLoans = balanceInfo.availableBalance == 0 && disbursementInfo.disbursementCount > 0
 				&& disbursementInfo.totalDisbursed <= balanceInfo.totalCommitment && toBeDisbursedAmount == 0;
+
+		boolean hasPositiveGrantedAmount1 = (balanceInfo.totalCommitment - balanceInfo.availableBalance) > 0
+				&& balanceInfo.availableBalance > 0;
+
+		boolean hasPositiveGrantedAmount2 = (balanceInfo.totalCommitment - balanceInfo.currentCommitment) > 0
+				&& balanceInfo.currentCommitment > 0;
+
+		// Only process if there are disbursements with both inputter and authorizer
+		boolean partiallyDisbursedloan = (hasPositiveGrantedAmount1 || hasPositiveGrantedAmount2)
+				&& disbursementInfo.disbursementCount > 0;
+
+		// return fully or partially disbursed loans
+		return fullyDisbursedLoans || partiallyDisbursedloan;
+
 	}
 
 	private void processValidArrangement(String arrangementId, Contract contract, TDate endDate,
