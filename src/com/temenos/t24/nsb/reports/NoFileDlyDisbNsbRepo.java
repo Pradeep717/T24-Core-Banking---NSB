@@ -112,6 +112,8 @@ public class NoFileDlyDisbNsbRepo extends Enquiry {
 		TDate tStartDate = dateRange[0];
 		TDate tEndDate = dateRange[1];
 
+		String co_code = session.getCompanyId().toString();
+
 		// Get branch filter
 		String branchFilter = getBranchFilter(companyCode);
 
@@ -120,8 +122,10 @@ public class NoFileDlyDisbNsbRepo extends Enquiry {
 
 		// Process each arrangement
 		List<String> arrangementIds = dataAccess.selectRecords("", "AA.ARRANGEMENT", "",
-				"WITH PRODUCT.LINE EQ LENDING AND ARR.STATUS EQ CURRENT " + branchFilter);
+				"WITH PRODUCT.LINE EQ LENDING AND ARR.STATUS EQ CURRENT AND PRODUCT.GROUP EQ AL.PERSONAL.LOAN.NSB AL.SME.LOAN.NSB HOUSING.LOAN AND LINK.DATE RG "
+						+ tStartDate + " " + tEndDate + " AND CO.CODE EQ " + co_code);
 
+		// System.out.println("Arrangement IDs: " + arrangementIds.size());
 		for (String arrangementId : arrangementIds) {
 			try {
 				processSingleArrangement(arrangementId, tStartDate, tEndDate, currentTimestamp);
@@ -679,6 +683,5 @@ public class NoFileDlyDisbNsbRepo extends Enquiry {
 		String disbursementDates = "";
 		String disbursementInputters = "";
 		String disbursementAuthorisers = "";
-
 	}
 }
