@@ -64,7 +64,7 @@ public class NoFileDepTrailBalSummRepo extends Enquiry {
 			Map<String, Map<String, ProductData>> productGroupMap = processArrangements(arrangements, ftcProdGrp,
 					ftcProd);
 
-			// Generate output
+			// Generate output result
 			generateOutput(resultList, productGroupMap, companyName, user, currentDateTime);
 
 		} catch (Exception e) {
