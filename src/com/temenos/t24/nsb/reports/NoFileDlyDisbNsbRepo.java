@@ -105,7 +105,6 @@ public class NoFileDlyDisbNsbRepo extends Enquiry {
 
 	private void processArrangements() {
 		Session session = new Session(this);
-		String companyCode = session.getCompanyId().toString();
 
 		// Get date range for processing
 		TDate[] dateRange = getProcessingDateRange(session);
@@ -113,9 +112,6 @@ public class NoFileDlyDisbNsbRepo extends Enquiry {
 		TDate tEndDate = dateRange[1];
 
 		String co_code = session.getCompanyId().toString();
-
-		// Get branch filter
-		String branchFilter = getBranchFilter(companyCode);
 
 		// Get current timestamp
 		String currentTimestamp = LocalDateTime.now().format(DATE_TIME_FORMATTER);
