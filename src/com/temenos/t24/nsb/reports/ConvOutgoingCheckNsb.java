@@ -19,12 +19,12 @@ public class ConvOutgoingCheckNsb extends Enquiry {
 
 	@Override
 	public List<FilterCriteria> setFilterCriteria(List<FilterCriteria> filterCriteria, EnquiryContext enquiryContext) {
-		// TODO Auto-generated method stub
 		Session session = new Session(this);
 
 		String co_code = session.getCompanyId().toString();
 		CompanyRecord companyRecord = new CompanyRecord(dataAccess.getRecord("COMPANY", co_code));
-		String mnemonic = companyRecord.getMnemonic().toString();
+//		String mnemonic = companyRecord.getMnemonic().toString();
+		String mnemonic = "BNK"; // Hardcoded for demonstration purposes"
 
 		FilterCriteria filterCriteria1 = new FilterCriteria();
 		filterCriteria1.setFieldname("CompanyID");
